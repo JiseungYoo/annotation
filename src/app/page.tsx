@@ -1,30 +1,35 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { useAudioPlayer } from '@/hooks/useAudioPlayer';
-import { AudioControls } from '@/components/AudioControls';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useMediaPlayer } from '@/hooks/useMediaPlayer';
 import { TranscriptPanel } from '@/components/TranscriptPanel';
 import { AnnotationPanel } from '@/components/AnnotationPanel';
 import { FileUpload, DropZone } from '@/components/FileUpload';
 import { SchemaSetup } from '@/components/SchemaSetup';
-import { ResizablePanels } from '@/components/ResizablePanels';
+import { ThreePanelLayout } from '@/components/ThreePanelLayout';
+import { MediaPanel } from '@/components/MediaPanel';
 import { JumpToTurn } from '@/components/JumpToTurn';
 import { TranscriptRow, AnnotationSchema, DEFAULT_SCHEMA } from '@/types';
 import { parseCSV, exportToCSV } from '@/utils/csvParser';
-import { Settings, Download, FileSpreadsheet, CheckCircle, AlertCircle } from 'lucide-react';
+import { Download, FileSpreadsheet, CheckCircle, AlertCircle } from 'lucide-react';
+
+const AUDIO_EXTENSIONS = ['wav', 'mp3', 'ogg', 'webm', 'm4a', 'aac'];
+const VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi', 'mkv'];
 
 export default function Home() {
   const {
-    audioState,
+    mediaState,
     loadAudio,
+    loadVideo,
     play,
     pause,
     stop,
     seek,
     setVolume,
-  } = useAudioPlayer();
+  } = useMediaPlayer();
 
-  const [audioFileName, setAudioFileName] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [mediaFileName, setMediaFileName] = useState<string | null>(null);
   const [transcriptFileName, setTranscriptFileName] = useState<string | null>(null);
   const [transcriptData, setTranscriptData] = useState<TranscriptRow[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
@@ -33,12 +38,24 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [loadInfo, setLoadInfo] = useState<{ matched: string[]; new: string[] } | null>(null);
 
-  // Handle audio file selection
-  const handleAudioFile = useCallback((file: File) => {
+  // Handle media file selection (audio or video)
+  const handleMediaFile = useCallback((file: File) => {
     setError(null);
-    setAudioFileName(file.name);
-    loadAudio(file);
-  }, [loadAudio]);
+    setMediaFileName(file.name);
+
+    const ext = file.name.toLowerCase().split('.').pop() || '';
+
+    if (VIDEO_EXTENSIONS.includes(ext)) {
+      // Wait for videoRef to be available
+      setTimeout(() => {
+        if (videoRef.current) {
+          loadVideo(file, videoRef.current);
+        }
+      }, 0);
+    } else {
+      loadAudio(file);
+    }
+  }, [loadAudio, loadVideo]);
 
   // Handle transcript file selection
   const handleTranscriptFile = useCallback((file: File) => {
@@ -52,9 +69,8 @@ export default function Home() {
         const result = parseCSV(text, schema);
         setTranscriptData(result.data);
         setTranscriptFileName(file.name);
-        setCurrentIndex(result.data.length > 0 ? 0 : -1);
+        setCurrentIndex(-1); // Start with no selection
 
-        // Show which columns were matched vs created new
         if (result.matchedColumns.length > 0 || result.newColumns.length > 0) {
           setLoadInfo({
             matched: result.matchedColumns,
@@ -75,11 +91,10 @@ export default function Home() {
 
   // Update current utterance based on playback time
   useEffect(() => {
-    if (!audioState.isPlaying || transcriptData.length === 0) return;
+    if (!mediaState.isPlaying || transcriptData.length === 0) return;
 
-    const currentTime = audioState.currentTime;
+    const currentTime = mediaState.currentTime;
 
-    // Find the utterance that contains the current time
     const index = transcriptData.findIndex(
       (row, i) => {
         const nextRow = transcriptData[i + 1];
@@ -91,7 +106,7 @@ export default function Home() {
     if (index !== -1 && index !== currentIndex) {
       setCurrentIndex(index);
     }
-  }, [audioState.currentTime, audioState.isPlaying, transcriptData, currentIndex]);
+  }, [mediaState.currentTime, mediaState.isPlaying, transcriptData, currentIndex]);
 
   // Handle row click - seek to time
   const handleRowClick = useCallback((index: number, time: number) => {
@@ -126,12 +141,10 @@ export default function Home() {
   // Handle schema save
   const handleSchemaSave = useCallback((newSchema: AnnotationSchema) => {
     setSchema(newSchema);
-    // If data is already loaded, we need to update the annotations structure
     if (transcriptData.length > 0) {
       setTranscriptData(prev => prev.map(row => {
         const newAnnotations: Record<string, string> = {};
         for (const col of newSchema) {
-          // Try to preserve existing annotation by column name match
           const existingCol = schema.find(c => c.name.toLowerCase() === col.name.toLowerCase());
           if (existingCol && row.annotations[existingCol.id]) {
             newAnnotations[col.id] = row.annotations[existingCol.id];
@@ -166,9 +179,11 @@ export default function Home() {
     ? Math.max(...transcriptData.map(r => r.turn_id))
     : 0;
 
+  const hasMedia = mediaState.isLoaded;
+
   return (
-    <DropZone onAudioDrop={handleAudioFile} onTranscriptDrop={handleTranscriptFile}>
-      <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+    <DropZone onAudioDrop={handleMediaFile} onTranscriptDrop={handleTranscriptFile}>
+      <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
         {/* Header */}
         <header className="bg-gray-800 border-b border-gray-700 p-4">
           <div className="flex items-center justify-between">
@@ -182,10 +197,10 @@ export default function Home() {
                 <span>Set Up Schema</span>
               </button>
               <FileUpload
-                type="audio"
-                fileName={audioFileName}
-                onFileSelect={handleAudioFile}
-                accept=".wav,.mp3,.ogg,.webm,.m4a,.aac"
+                type="media"
+                fileName={mediaFileName}
+                onFileSelect={handleMediaFile}
+                accept=".wav,.mp3,.ogg,.webm,.m4a,.aac,.mp4,.mov,.avi,.mkv"
               />
               <FileUpload
                 type="transcript"
@@ -196,6 +211,11 @@ export default function Home() {
             </div>
           </div>
         </header>
+
+        {/* Tip Banner - Right under navbar */}
+        <div className="bg-gray-800/50 border-b border-gray-700 px-4 py-2 text-sm text-gray-400">
+          Tip: Set up schema first, then load CSV. Press Space to play/pause. Drag files onto the window.
+        </div>
 
         {/* Error Banner */}
         {error && (
@@ -237,18 +257,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Audio Controls */}
-        <div className="p-4 border-b border-gray-700">
-          <AudioControls
-            audioState={audioState}
-            onPlay={play}
-            onPause={pause}
-            onStop={stop}
-            onSeek={seek}
-            onVolumeChange={setVolume}
-          />
-        </div>
-
         {/* Toolbar */}
         <div className="flex items-center justify-between px-4 py-2 bg-gray-800/50 border-b border-gray-700">
           <div className="flex items-center gap-4">
@@ -264,16 +272,6 @@ export default function Home() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <div className="text-xs text-gray-500 mr-2">
-              Schema: {schema.map(c => c.name).join(', ')}
-            </div>
-            <button
-              onClick={() => setIsSchemaSetupOpen(true)}
-              className="flex items-center gap-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-sm"
-            >
-              <Settings size={16} />
-              <span>Edit Schema</span>
-            </button>
             <button
               onClick={handleExport}
               disabled={transcriptData.length === 0}
@@ -286,9 +284,40 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Main Content - Resizable Panels */}
+        {/* Main Content - Three Panel Layout */}
         <div className="flex-1 overflow-hidden">
-          <ResizablePanels
+          <ThreePanelLayout
+            showTop={hasMedia}
+            defaultTopHeight={300}
+            maxTopHeight={500}
+            minTopHeight={150}
+            defaultLeftWidth={50}
+            minLeftWidth={25}
+            minRightWidth={25}
+            top={
+              <div className="h-full bg-gray-900 border-b border-gray-700">
+                <div className="p-2 bg-gray-800 border-b border-gray-700">
+                  <h2 className="text-sm font-medium text-gray-400">Media</h2>
+                </div>
+                <div className="h-[calc(100%-40px)]">
+                  <MediaPanel
+                    ref={videoRef}
+                    mediaType={mediaState.mediaType}
+                    fileName={mediaFileName}
+                    isPlaying={mediaState.isPlaying}
+                    currentTime={mediaState.currentTime}
+                    duration={mediaState.duration}
+                    volume={mediaState.volume}
+                    isLoaded={mediaState.isLoaded}
+                    onPlay={play}
+                    onPause={pause}
+                    onStop={stop}
+                    onSeek={seek}
+                    onVolumeChange={setVolume}
+                  />
+                </div>
+              </div>
+            }
             left={
               <div className="h-full bg-gray-900 border-r border-gray-700">
                 <div className="p-2 bg-gray-800 border-b border-gray-700">
@@ -319,7 +348,6 @@ export default function Home() {
                 </div>
               </div>
             }
-            defaultLeftWidth={40}
           />
         </div>
 
@@ -331,10 +359,9 @@ export default function Home() {
           onClose={() => setIsSchemaSetupOpen(false)}
         />
 
-        {/* Footer with hint */}
+        {/* Footer */}
         <footer className="bg-gray-800 border-t border-gray-700 px-4 py-2 text-xs text-gray-500">
-          <div className="flex items-center justify-between">
-            <span>Tip: Set up schema first, then load CSV. Press Space to play/pause. Drag files onto the window.</span>
+          <div className="flex items-center justify-end">
             <span className="text-gray-600">
               Required CSV columns: <code className="text-gray-400 bg-gray-900 px-1 rounded">turn_id, speaker, start, end, utterance</code>
             </span>

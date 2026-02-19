@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import { TranscriptRow } from '@/types';
 import { formatTime } from '@/utils/formatTime';
 
@@ -10,30 +9,8 @@ interface TranscriptPanelProps {
   onRowClick: (index: number, time: number) => void;
 }
 
-export function TranscriptPanel({ data, currentIndex, onRowClick }: TranscriptPanelProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const currentRowRef = useRef<HTMLDivElement>(null);
-
-  // Auto-scroll to current utterance
-  useEffect(() => {
-    if (currentRowRef.current && containerRef.current) {
-      const container = containerRef.current;
-      const row = currentRowRef.current;
-      const rowTop = row.offsetTop;
-      const rowHeight = row.offsetHeight;
-      const containerHeight = container.clientHeight;
-      const scrollTop = container.scrollTop;
-
-      // Check if row is out of view
-      if (rowTop < scrollTop || rowTop + rowHeight > scrollTop + containerHeight) {
-        container.scrollTo({
-          top: rowTop - containerHeight / 2 + rowHeight / 2,
-          behavior: 'smooth',
-        });
-      }
-    }
-  }, [currentIndex]);
-
+export function TranscriptPanel({ data, currentIndex }: TranscriptPanelProps) {
+  // Show empty state when no data loaded
   if (data.length === 0) {
     return (
       <div className="h-full flex items-center justify-center text-gray-500">
@@ -45,39 +22,69 @@ export function TranscriptPanel({ data, currentIndex, onRowClick }: TranscriptPa
     );
   }
 
+  // Show empty state when no item selected
+  if (currentIndex < 0 || currentIndex >= data.length) {
+    return (
+      <div className="h-full flex items-center justify-center text-gray-500">
+        <div className="text-center">
+          <p className="text-lg">No utterance selected</p>
+          <p className="text-sm mt-2">Click a row in the Annotations panel to view details</p>
+        </div>
+      </div>
+    );
+  }
+
+  const row = data[currentIndex];
+
   return (
-    <div ref={containerRef} className="h-full overflow-y-auto">
-      <div className="p-4 space-y-2">
-        {data.map((row, index) => {
-          const isCurrent = index === currentIndex;
-          return (
-            <div
-              key={row.turn_id}
-              ref={isCurrent ? currentRowRef : null}
-              onClick={() => onRowClick(index, row.start)}
-              className={`p-3 rounded-lg cursor-pointer transition-all ${
-                isCurrent
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-gray-800 hover:bg-gray-700 text-gray-200'
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-1">
-                <span className={`text-xs font-mono ${isCurrent ? 'text-blue-200' : 'text-gray-500'}`}>
-                  #{row.turn_id}
-                </span>
-                <span className={`font-semibold ${isCurrent ? 'text-blue-100' : 'text-blue-400'}`}>
-                  {row.speaker}
-                </span>
-                <span className={`text-xs ${isCurrent ? 'text-blue-200' : 'text-gray-500'}`}>
-                  {formatTime(row.start)} - {formatTime(row.end)}
-                </span>
-              </div>
-              <p className="text-sm leading-relaxed">
-                {row.utterance}
-              </p>
+    <div className="h-full overflow-y-auto p-6">
+      <div className="bg-gray-800 rounded-lg p-6 space-y-4">
+        {/* Header info */}
+        <div className="flex items-center gap-4 pb-4 border-b border-gray-700">
+          <span className="text-sm font-mono text-gray-400 bg-gray-900 px-2 py-1 rounded">
+            Turn #{row.turn_id}
+          </span>
+          <span className="text-lg font-semibold text-blue-400">
+            {row.speaker}
+          </span>
+          <span className="text-sm text-gray-500">
+            {formatTime(row.start)} - {formatTime(row.end)}
+          </span>
+        </div>
+
+        {/* Utterance text */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Utterance</h3>
+          <p className="text-lg text-gray-100 leading-relaxed">
+            {row.utterance}
+          </p>
+        </div>
+
+        {/* Clean utterance if available */}
+        {row.clean_utterance && (
+          <div className="space-y-2 pt-4 border-t border-gray-700">
+            <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Clean Utterance</h3>
+            <p className="text-base text-gray-300 leading-relaxed">
+              {row.clean_utterance}
+            </p>
+          </div>
+        )}
+
+        {/* Additional metadata */}
+        <div className="pt-4 border-t border-gray-700 grid grid-cols-2 gap-4 text-sm">
+          {row.words !== undefined && (
+            <div>
+              <span className="text-gray-500">Words:</span>
+              <span className="ml-2 text-gray-300">{row.words}</span>
             </div>
-          );
-        })}
+          )}
+          {row.length_seconds !== undefined && (
+            <div>
+              <span className="text-gray-500">Duration:</span>
+              <span className="ml-2 text-gray-300">{row.length_seconds.toFixed(2)}s</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -143,31 +143,22 @@ export function AnnotationPanel({
               <tr
                 key={row.turn_id}
                 ref={isCurrent ? currentRowRef : null}
-                className={`${
+                onClick={() => onRowClick(index, row.start)}
+                className={`cursor-pointer ${
                   isCurrent ? 'bg-blue-900/50' : 'hover:bg-gray-800/50'
                 } transition-colors`}
               >
-                <td
-                  className="p-2 text-xs font-mono text-gray-500 border-b border-gray-800 cursor-pointer"
-                  onClick={() => onRowClick(index, row.start)}
-                >
+                <td className="p-2 text-xs font-mono text-gray-500 border-b border-gray-800">
                   {row.turn_id}
                 </td>
-                <td
-                  className="p-2 text-sm text-blue-400 border-b border-gray-800 cursor-pointer"
-                  onClick={() => onRowClick(index, row.start)}
-                >
+                <td className="p-2 text-sm text-blue-400 border-b border-gray-800">
                   {row.speaker}
                 </td>
-                <td
-                  className="p-2 text-xs text-gray-500 border-b border-gray-800 cursor-pointer"
-                  onClick={() => onRowClick(index, row.start)}
-                >
+                <td className="p-2 text-xs text-gray-500 border-b border-gray-800">
                   {formatTime(row.start)}
                 </td>
                 <td
-                  className="p-2 text-sm text-gray-300 border-b border-gray-800 cursor-pointer max-w-[200px] truncate"
-                  onClick={() => onRowClick(index, row.start)}
+                  className="p-2 text-sm text-gray-300 border-b border-gray-800 max-w-[200px] truncate"
                   title={row.utterance}
                 >
                   {row.utterance}
@@ -180,7 +171,10 @@ export function AnnotationPanel({
                     <td
                       key={col.id}
                       className="p-2 border-b border-gray-800"
-                      onClick={() => handleCellClick(index, col.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCellClick(index, col.id);
+                      }}
                     >
                       {isEditing ? (
                         <input

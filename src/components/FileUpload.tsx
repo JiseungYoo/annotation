@@ -1,10 +1,10 @@
 'use client';
 
 import { useRef } from 'react';
-import { Upload, FileAudio, FileText } from 'lucide-react';
+import { Upload, FileAudio, FileText, FileVideo } from 'lucide-react';
 
 interface FileUploadProps {
-  type: 'audio' | 'transcript';
+  type: 'audio' | 'video' | 'media' | 'transcript';
   fileName: string | null;
   onFileSelect: (file: File) => void;
   accept: string;
@@ -24,8 +24,26 @@ export function FileUpload({ type, fileName, onFileSelect, accept }: FileUploadP
     }
   };
 
-  const Icon = type === 'audio' ? FileAudio : FileText;
-  const label = type === 'audio' ? 'Load Audio File' : 'Load Transcript CSV';
+  const getIcon = () => {
+    switch (type) {
+      case 'video': return FileVideo;
+      case 'audio': return FileAudio;
+      case 'media': return FileVideo;
+      default: return FileText;
+    }
+  };
+
+  const getLabel = () => {
+    switch (type) {
+      case 'video': return 'Load Video File';
+      case 'audio': return 'Load Audio File';
+      case 'media': return 'Load Media File';
+      default: return 'Load Transcript CSV';
+    }
+  };
+
+  const Icon = getIcon();
+  const label = getLabel();
 
   return (
     <div>
@@ -69,13 +87,15 @@ export function DropZone({ onAudioDrop, onTranscriptDrop, children }: DropZonePr
     e.stopPropagation();
 
     const files = Array.from(e.dataTransfer.files);
+    const audioExtensions = ['wav', 'mp3', 'ogg', 'webm', 'm4a', 'aac'];
+    const videoExtensions = ['mp4', 'webm', 'mov', 'avi', 'mkv'];
 
     for (const file of files) {
       const ext = file.name.toLowerCase().split('.').pop();
 
       if (ext === 'csv') {
         onTranscriptDrop(file);
-      } else if (['wav', 'mp3', 'ogg', 'webm', 'm4a', 'aac'].includes(ext || '')) {
+      } else if (audioExtensions.includes(ext || '') || videoExtensions.includes(ext || '')) {
         onAudioDrop(file);
       }
     }
