@@ -182,13 +182,16 @@ turn_id,speaker,start,end,utterance
             <Upload size={24} className="text-blue-400" />
             Supported Media Formats
           </h2>
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <h3 className="font-semibold text-lg mb-3">Audio Formats</h3>
                 <ul className="space-y-1 text-gray-300">
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-400 font-semibold">✓ MP3 (.mp3)</span>
+                    <span className="text-xs bg-green-900/30 text-green-300 px-2 py-0.5 rounded">Recommended</span>
+                  </li>
                   <li>WAV (.wav)</li>
-                  <li>MP3 (.mp3)</li>
                   <li>OGG (.ogg)</li>
                   <li>WebM (.webm)</li>
                   <li>M4A (.m4a)</li>
@@ -198,13 +201,39 @@ turn_id,speaker,start,end,utterance
               <div>
                 <h3 className="font-semibold text-lg mb-3">Video Formats</h3>
                 <ul className="space-y-1 text-gray-300">
-                  <li>MP4 (.mp4)</li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-400 font-semibold">✓ MP4 (.mp4)</span>
+                    <span className="text-xs bg-green-900/30 text-green-300 px-2 py-0.5 rounded">Recommended</span>
+                  </li>
                   <li>WebM (.webm)</li>
                   <li>MOV (.mov)</li>
                   <li>AVI (.avi)</li>
                   <li>MKV (.mkv)</li>
                 </ul>
               </div>
+            </div>
+
+            {/* File Size Recommendations */}
+            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+              <h3 className="font-semibold text-lg mb-3 text-blue-300">File Size Recommendations</h3>
+              <div className="space-y-2 text-sm text-gray-300">
+                <p>
+                  <strong className="text-white">MP3</strong> and <strong className="text-white">MP4</strong> formats are highly compressed and provide fast processing with smaller file sizes.
+                </p>
+                <ul className="space-y-1 ml-4 list-disc list-inside">
+                  <li><strong className="text-green-400">Optimal performance:</strong> Keep files under 500 MB</li>
+                  <li><strong className="text-yellow-400">Maximum recommended:</strong> 1 GB</li>
+                  <li><strong className="text-red-400">Warning:</strong> Files over 1 GB may cause slow processing or browser performance issues as all data is processed in-browser memory</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* CSV File Size */}
+            <div className="bg-gray-900 border border-gray-600 rounded-lg p-4">
+              <h3 className="font-semibold text-lg mb-2">CSV Transcript Files</h3>
+              <p className="text-sm text-gray-300">
+                Keep CSV files under <strong className="text-white">10 MB</strong> for best performance. Large transcripts with thousands of rows may cause UI lag.
+              </p>
             </div>
           </div>
         </section>
