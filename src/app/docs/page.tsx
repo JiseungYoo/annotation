@@ -105,8 +105,7 @@ turn_id,speaker,start,end,utterance
                     </div>
                   )}
                 </li>
-                <li>Upload your media file (audio or video)</li>
-                <li>Upload your transcript CSV file</li>
+                <li>Upload your media file (audio or video) and transcript CSV file (supports drag and drop)</li>
                 <li>Start annotating by clicking on utterances and filling in the annotation fields</li>
                 <li>Export your annotated data when finished</li>
               </ol>

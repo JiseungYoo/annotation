@@ -36,6 +36,11 @@ export default function LandingPage() {
             A powerful web-based tool for analyzing conversations with synchronized media playback,
             transcript viewing, and collaborative annotation capabilities.
           </p>
+          <div className="max-w-2xl mx-auto mb-8 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-base text-green-800 font-medium">
+              🔒 100% Local & Private — Load and download the app locally. No data is saved on any backend servers.
+            </p>
+          </div>
           <Link
             href="/run"
             className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors text-white"
