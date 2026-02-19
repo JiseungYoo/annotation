@@ -1,6 +1,10 @@
-import { FileSpreadsheet, Upload, Play, Download, Keyboard, MousePointer } from 'lucide-react';
+'use client';
+
+import { useState } from 'react';
+import { FileSpreadsheet, Upload, Play, Download, Keyboard, MousePointer, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 
 export default function DocsPage() {
+  const [showSchemaInfo, setShowSchemaInfo] = useState(false);
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -21,8 +25,86 @@ export default function DocsPage() {
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-4">
             <div>
               <h3 className="font-semibold text-lg mb-2">Quick Start Guide</h3>
-              <ol className="space-y-2 text-gray-300 list-decimal list-inside">
-                <li>Set up your annotation schema (click "Set Up Schema" button)</li>
+              <ol className="space-y-3 text-gray-300 list-decimal list-inside">
+                <li className="font-semibold text-blue-400">
+                  <span className="text-white">Set up your annotation schema (click &quot;Set Up Schema&quot; button)</span>
+                  <button
+                    onClick={() => setShowSchemaInfo(!showSchemaInfo)}
+                    className="ml-3 inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+                  >
+                    Do This First
+                    {showSchemaInfo ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </button>
+
+                  {showSchemaInfo && (
+                    <div className="mt-4 ml-6 bg-gray-900 border border-blue-500/30 rounded-lg p-6 space-y-6 text-gray-300 font-normal text-base">
+                      {/* Why Critical */}
+                      <div>
+                        <div className="flex items-start gap-2 mb-3">
+                          <AlertCircle size={20} className="text-blue-400 mt-0.5 flex-shrink-0" />
+                          <h4 className="font-semibold text-lg text-white">Why Schema Setup is Critical</h4>
+                        </div>
+                        <p className="text-gray-300 leading-relaxed">
+                          The schema defines what annotation categories you want to track (e.g., &quot;uptake&quot;, &quot;questioning&quot;, &quot;backchanneling&quot;).
+                          <strong className="text-blue-400"> You MUST set up your schema BEFORE loading files.</strong> This enables the tool to properly handle your annotation data.
+                        </p>
+                      </div>
+
+                      {/* Two Workflows */}
+                      <div>
+                        <h4 className="font-semibold text-lg text-white mb-4">Two Workflows</h4>
+
+                        {/* Workflow 1 */}
+                        <div className="mb-6 bg-gray-800 rounded-lg p-4 border border-gray-700">
+                          <h5 className="font-semibold text-blue-400 mb-2">Workflow 1: Loading CSV with Existing Annotations</h5>
+                          <ul className="space-y-2 text-sm list-disc list-inside ml-2">
+                            <li>Your CSV already has annotation columns (e.g., &quot;uptake&quot;, &quot;questioning&quot;)</li>
+                            <li>Set up your schema with <strong>MATCHING column names</strong> first</li>
+                            <li>When you load the CSV, the tool automatically matches and loads your existing annotation data</li>
+                          </ul>
+                          <div className="mt-3 bg-gray-900 rounded p-3 overflow-x-auto">
+                            <pre className="text-xs text-gray-400">
+{`# Example CSV with existing annotations
+turn_id,speaker,start,end,utterance,uptake,questioning
+1,S1,0.0,2.5,"Hello, how are you?",1,0
+2,S2,3.0,5.2,"I'm doing well, thanks!",0,1`}
+                            </pre>
+                          </div>
+                        </div>
+
+                        {/* Workflow 2 */}
+                        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                          <h5 className="font-semibold text-green-400 mb-2">Workflow 2: Starting Fresh (First Time Annotation)</h5>
+                          <ul className="space-y-2 text-sm list-disc list-inside ml-2">
+                            <li>Your CSV only has the required columns (turn_id, speaker, start, end, utterance)</li>
+                            <li>Set up your schema with the annotation categories you want to create</li>
+                            <li>The tool <strong>CREATES empty columns</strong> for you to fill in as you annotate</li>
+                          </ul>
+                          <div className="mt-3 bg-gray-900 rounded p-3 overflow-x-auto">
+                            <pre className="text-xs text-gray-400">
+{`# Example CSV without annotations (base columns only)
+turn_id,speaker,start,end,utterance
+1,S1,0.0,2.5,"Hello, how are you?"
+2,S2,3.0,5.2,"I'm doing well, thanks!"`}
+                            </pre>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Step by step */}
+                      <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                        <h4 className="font-semibold text-white mb-3">Step-by-Step Instructions</h4>
+                        <ol className="space-y-2 text-sm list-decimal list-inside ml-2">
+                          <li>Click &quot;Set Up Schema&quot; button <strong>FIRST</strong> (before uploading any files)</li>
+                          <li>Define your annotation column names (e.g., &quot;uptake&quot;, &quot;questioning&quot;)</li>
+                          <li>Save your schema</li>
+                          <li>Upload your media and CSV files</li>
+                          <li>If CSV has matching columns, data will load; if not, empty columns will be created</li>
+                        </ol>
+                      </div>
+                    </div>
+                  )}
+                </li>
                 <li>Upload your media file (audio or video)</li>
                 <li>Upload your transcript CSV file</li>
                 <li>Start annotating by clicking on utterances and filling in the annotation fields</li>
