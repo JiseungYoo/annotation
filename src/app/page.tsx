@@ -22,6 +22,7 @@ export default function Home() {
     loadAudio,
     loadVideo,
     play,
+    playSegment,
     pause,
     stop,
     seek,
@@ -108,11 +109,14 @@ export default function Home() {
     }
   }, [mediaState.currentTime, mediaState.isPlaying, transcriptData, currentIndex]);
 
-  // Handle row click - seek to time
-  const handleRowClick = useCallback((index: number, time: number) => {
+  // Handle row click - play only that segment
+  const handleRowClick = useCallback((index: number) => {
     setCurrentIndex(index);
-    seek(time);
-  }, [seek]);
+    const row = transcriptData[index];
+    if (row) {
+      playSegment(row.start, row.end);
+    }
+  }, [transcriptData, playSegment]);
 
   // Handle jump to turn
   const handleJumpToTurn = useCallback((turnId: number) => {
@@ -187,7 +191,7 @@ export default function Home() {
         {/* Header */}
         <header className="bg-gray-800 border-b border-gray-700 p-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold">Audio Transcript Player</h1>
+            <h1 className="text-xl font-bold">Multimodal Annotation Tool</h1>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setIsSchemaSetupOpen(true)}

@@ -12,6 +12,7 @@ export interface MediaState extends AudioState {
 export function useMediaPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const segmentEndRef = useRef<number | null>(null);
   const [mediaState, setMediaState] = useState<MediaState>({
     isPlaying: false,
     currentTime: 0,
@@ -37,6 +38,11 @@ export function useMediaPlayer() {
     });
 
     media.addEventListener('timeupdate', () => {
+      // Check if we've reached the segment end
+      if (segmentEndRef.current !== null && media.currentTime >= segmentEndRef.current) {
+        media.pause();
+        segmentEndRef.current = null;
+      }
       setMediaState(prev => ({
         ...prev,
         currentTime: media.currentTime,
@@ -100,6 +106,17 @@ export function useMediaPlayer() {
   const play = useCallback(() => {
     const media = getActiveMedia();
     if (media) {
+      segmentEndRef.current = null; // Clear segment end for normal play
+      media.play();
+    }
+  }, [getActiveMedia]);
+
+  // Play a specific segment from startTime to endTime
+  const playSegment = useCallback((startTime: number, endTime: number) => {
+    const media = getActiveMedia();
+    if (media) {
+      media.currentTime = Math.max(0, startTime);
+      segmentEndRef.current = endTime;
       media.play();
     }
   }, [getActiveMedia]);
@@ -187,6 +204,7 @@ export function useMediaPlayer() {
     loadAudio,
     loadVideo,
     play,
+    playSegment,
     pause,
     togglePlayPause,
     stop,

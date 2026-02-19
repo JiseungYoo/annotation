@@ -6,7 +6,7 @@ import { formatTime } from '@/utils/formatTime';
 interface TranscriptPanelProps {
   data: TranscriptRow[];
   currentIndex: number;
-  onRowClick: (index: number, time: number) => void;
+  onRowClick: (index: number) => void;
 }
 
 export function TranscriptPanel({ data, currentIndex }: TranscriptPanelProps) {

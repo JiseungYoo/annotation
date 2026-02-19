@@ -9,7 +9,7 @@ interface AnnotationPanelProps {
   currentIndex: number;
   schema: AnnotationSchema;
   onAnnotationChange: (rowIndex: number, columnId: string, value: string) => void;
-  onRowClick: (index: number, time: number) => void;
+  onRowClick: (index: number) => void;
 }
 
 export function AnnotationPanel({
@@ -143,7 +143,7 @@ export function AnnotationPanel({
               <tr
                 key={row.turn_id}
                 ref={isCurrent ? currentRowRef : null}
-                onClick={() => onRowClick(index, row.start)}
+                onClick={() => onRowClick(index)}
                 className={`cursor-pointer ${
                   isCurrent ? 'bg-blue-900/50' : 'hover:bg-gray-800/50'
                 } transition-colors`}
