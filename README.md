@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Audio Transcript Player (Web Version)
+
+A web-based audio player for analyzing conversations with synchronized transcript viewing and annotation capabilities. Built with Next.js, TypeScript, and Tailwind CSS.
+
+## Features
+
+- **Audio Playback**: Play, pause, stop with keyboard shortcuts (Space to play/pause)
+- **Volume Control**: Adjustable volume slider with mute toggle
+- **Progress Bar**: Click to seek to any position
+- **CSV Transcript Loading**: Upload timestamped conversation transcripts
+- **Real-time Sync**: Current utterance highlights automatically during playback
+- **Turn-Based Navigation**: Jump to specific utterances by turn ID
+- **Interactive Annotations**: Click-to-edit annotation fields with Tab navigation
+- **Custom Column Names**: Rename annotation columns
+- **Export Annotations**: Download annotated data as CSV
+- **Resizable Panels**: Drag divider between transcript and annotation panels
+- **Drag & Drop**: Drop audio/CSV files directly onto the window
 
 ## Getting Started
 
-First, run the development server:
+### Development
 
 ```bash
+# Install dependencies
+npm install
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Production Build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## Deploying to Vercel
 
-To learn more about Next.js, take a look at the following resources:
+### Option 1: Deploy with Vercel CLI
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+# Install Vercel CLI
+npm install -g vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Deploy
+cd web
+vercel
+```
 
-## Deploy on Vercel
+### Option 2: Deploy via GitHub
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Push this `web` folder to a GitHub repository
+2. Go to [vercel.com](https://vercel.com)
+3. Click "New Project"
+4. Import your GitHub repository
+5. Vercel will auto-detect Next.js and configure the build
+6. Click "Deploy"
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Option 3: Deploy from this folder
+
+1. Go to [vercel.com/new](https://vercel.com/new)
+2. Drag and drop the `web` folder
+3. Vercel will handle the rest
+
+## CSV Format
+
+Your transcript CSV should include these required columns:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| turn_id | integer | Unique identifier for each utterance |
+| username | string | Speaker identifier (e.g., "S1", "S2") |
+| start | float | Start time in seconds |
+| end | float | End time in seconds |
+| utterance | string | The spoken text |
+
+### Example CSV
+
+```csv
+turn_id,username,start,end,utterance
+1,S1,0.0,2.5,"Hello, how are you?"
+2,S2,3.0,5.2,"I'm doing well, thanks!"
+3,S1,6.1,8.9,"That's great to hear."
+```
+
+## Supported Audio Formats
+
+- WAV
+- MP3
+- OGG
+- WebM
+- M4A
+- AAC
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Icons**: Lucide React
+- **Audio**: HTML5 Audio API
