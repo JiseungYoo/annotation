@@ -89,6 +89,9 @@ export default function LandingPage() {
         {/* Copyright */}
         <div className="text-center text-gray-500 text-sm">
           <p>&copy; {new Date().getFullYear()} Multimodal Annotation Tool. All rights reserved.</p>
+          <p className="mt-1">
+            Contact <a href="mailto:jyoo20@umd.edu" className="text-blue-500 hover:text-blue-400">jyoo20@umd.edu</a>
+          </p>
         </div>
       </div>
     </div>
