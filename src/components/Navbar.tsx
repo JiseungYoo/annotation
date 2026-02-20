@@ -8,6 +8,7 @@ export function Navbar() {
 
   const navItems = [
     { name: 'Docs', href: '/docs' },
+    { name: 'Demo', href: '/demo' },
     { name: 'Run', href: '/run' },
     { name: 'Batches', href: '/batches', badge: 'Beta' },
   ];

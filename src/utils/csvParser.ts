@@ -6,6 +6,38 @@ export interface ParseResult {
   newColumns: string[];      // Schema columns that were not found (created as empty)
 }
 
+/**
+ * Parse timestamp string to seconds.
+ * Supports formats:
+ * - M:SS:ms (e.g., "0:02:00" = 2.0 seconds, "1:30:50" = 90.5 seconds)
+ * - Numeric seconds (e.g., "120.5")
+ */
+function parseTimestamp(value: string): number {
+  if (!value || value.trim() === '') return 0;
+
+  const trimmed = value.trim();
+
+  // Check if it's a timestamp format (contains colons)
+  if (trimmed.includes(':')) {
+    const parts = trimmed.split(':');
+    if (parts.length === 3) {
+      // M:SS:ms format
+      const minutes = parseInt(parts[0], 10) || 0;
+      const seconds = parseInt(parts[1], 10) || 0;
+      const milliseconds = parseInt(parts[2], 10) || 0;
+      return minutes * 60 + seconds + milliseconds / 100;
+    } else if (parts.length === 2) {
+      // M:SS format (no milliseconds)
+      const minutes = parseInt(parts[0], 10) || 0;
+      const seconds = parseInt(parts[1], 10) || 0;
+      return minutes * 60 + seconds;
+    }
+  }
+
+  // Fallback: try to parse as numeric seconds
+  return parseFloat(trimmed) || 0;
+}
+
 export function parseCSV(csvText: string, schema: AnnotationSchema): ParseResult {
   const lines = csvText.trim().split('\n');
   if (lines.length < 2) {
@@ -68,8 +100,8 @@ export function parseCSV(csvText: string, schema: AnnotationSchema): ParseResult
     const row: TranscriptRow = {
       turn_id: parseInt(values[headerMap['turn_id']] || '0', 10),
       speaker: values[headerMap['speaker']] || '',
-      start: parseFloat(values[headerMap['start']] || '0'),
-      end: parseFloat(values[headerMap['end']] || '0'),
+      start: parseTimestamp(values[headerMap['start']] || '0'),
+      end: parseTimestamp(values[headerMap['end']] || '0'),
       utterance: values[headerMap['utterance']] || '',
       clean_utterance: headerMap['clean_utterance'] !== undefined ? values[headerMap['clean_utterance']] : undefined,
       start_ts: headerMap['start_ts'] !== undefined ? values[headerMap['start_ts']] : undefined,

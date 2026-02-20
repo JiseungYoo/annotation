@@ -1,0 +1,6 @@
+﻿turn_id,speaker,start,end,utterance
+1,Teacher,0.0,2.0,Today we are learning about plants.
+2,Teacher,3.0,6.0,"Plants need sunlight, water, and soil to grow."
+3,Teacher,7.0,9.0,The roots take in water from the soil.
+4,Teacher,10.0,11.30,How do leaves use sunlight to make food?
+5,Teacher,12.0,15.0,The leaves use sunlight to make food.

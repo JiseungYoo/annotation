@@ -199,6 +199,28 @@ export function useMediaPlayer() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [togglePlayPause]);
 
+  // Manual cleanup function for explicit memory release
+  const cleanup = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      URL.revokeObjectURL(audioRef.current.src);
+      audioRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.pause();
+      URL.revokeObjectURL(videoRef.current.src);
+      videoRef.current = null;
+    }
+    setMediaState({
+      isPlaying: false,
+      currentTime: 0,
+      duration: 0,
+      volume: 0.7,
+      isLoaded: false,
+      mediaType: null,
+    });
+  }, []);
+
   return {
     mediaState,
     loadAudio,
@@ -210,5 +232,6 @@ export function useMediaPlayer() {
     stop,
     seek,
     setVolume,
+    cleanup,
   };
 }
