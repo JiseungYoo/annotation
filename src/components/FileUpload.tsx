@@ -71,7 +71,7 @@ export function FileUpload({ type, fileName, onFileSelect, accept }: FileUploadP
 }
 
 interface DropZoneProps {
-  onAudioDrop: (file: File) => void;
+  onAudioDrop?: (file: File) => void;
   onTranscriptDrop: (file: File) => void;
   children: React.ReactNode;
 }
@@ -95,7 +95,7 @@ export function DropZone({ onAudioDrop, onTranscriptDrop, children }: DropZonePr
 
       if (ext === 'csv') {
         onTranscriptDrop(file);
-      } else if (audioExtensions.includes(ext || '') || videoExtensions.includes(ext || '')) {
+      } else if (onAudioDrop && (audioExtensions.includes(ext || '') || videoExtensions.includes(ext || ''))) {
         onAudioDrop(file);
       }
     }

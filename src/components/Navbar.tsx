@@ -10,7 +10,6 @@ export function Navbar() {
     { name: 'Docs', href: '/docs' },
     { name: 'Demo', href: '/demo' },
     { name: 'Run', href: '/run' },
-    { name: 'Batches', href: '/batches', badge: 'Beta' },
   ];
 
   return (
@@ -29,18 +28,13 @@ export function Navbar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors
                     ${isActive
                       ? 'bg-gray-900 text-white'
                       : 'text-gray-300 hover:bg-gray-700 hover:text-white'
                     }`}
                 >
                   {item.name}
-                  {item.badge && (
-                    <span className="px-1.5 py-0.5 text-xs bg-blue-600 text-white rounded">
-                      {item.badge}
-                    </span>
-                  )}
                 </Link>
               );
             })}
