@@ -129,9 +129,10 @@ export function AnnotationPanel({
             {schema.map(col => (
               <th
                 key={col.id}
-                className="p-2 text-left text-xs font-medium text-blue-400 border-b border-gray-700 min-w-[100px]"
+                className="p-2 text-left text-xs font-medium text-blue-400 border-b border-gray-700"
+                style={{ minWidth: `${Math.max(60, 100 - (schema.length - 4) * 10)}px` }}
               >
-                {col.name}
+                <span className="truncate block">{col.name}</span>
               </th>
             ))}
           </tr>

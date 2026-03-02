@@ -486,10 +486,10 @@ export default function ContextPage() {
                       <h3 className="text-sm font-medium text-gray-400 mb-3">
                         Annotation for Target Turn
                       </h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="flex gap-2 overflow-x-auto">
                         {schema.map(col => (
-                          <div key={col.id}>
-                            <label className="block text-xs text-gray-500 mb-1">{col.name}</label>
+                          <div key={col.id} className="flex-1 min-w-0">
+                            <label className="block text-xs text-gray-500 mb-1 truncate">{col.name}</label>
                             <input
                               type="text"
                               value={targetRow.annotations[col.id] || ''}
