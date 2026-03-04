@@ -39,6 +39,7 @@ export default function SessionDemoPage() {
   const [isSchemaSetupOpen, setIsSchemaSetupOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [originalColumnNames, setOriginalColumnNames] = useState<string[]>([]);
 
   // Load demo data on mount
   useEffect(() => {
@@ -55,6 +56,7 @@ export default function SessionDemoPage() {
         const csvText = await csvResponse.text();
         const result = parseCSV(csvText, schema);
         setTranscriptData(result.data);
+        setOriginalColumnNames(result.originalColumnNames);
 
         // Load demo audio
         const audioResponse = await fetch('/demo/sample.mp3');
@@ -156,7 +158,7 @@ export default function SessionDemoPage() {
   const handleExport = useCallback(() => {
     if (transcriptData.length === 0) return;
 
-    const csv = exportToCSV(transcriptData, schema);
+    const csv = exportToCSV(transcriptData, schema, originalColumnNames);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
@@ -166,7 +168,7 @@ export default function SessionDemoPage() {
     link.click();
 
     URL.revokeObjectURL(url);
-  }, [transcriptData, schema]);
+  }, [transcriptData, schema, originalColumnNames]);
 
   const maxTurnId = transcriptData.length > 0
     ? Math.max(...transcriptData.map(r => r.turn_id))

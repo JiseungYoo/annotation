@@ -19,6 +19,8 @@ interface ContextRow {
   start: number;
   end: number;
   annotations: Record<string, string>;
+  // Store all original columns from CSV (preserves schema)
+  originalColumns: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -26,13 +28,17 @@ function parseContextCSV(text: string, schema: AnnotationSchema): {
   data: ContextRow[];
   matchedColumns: string[];
   newColumns: string[];
+  originalColumnNames: string[];
 } {
   const lines = text.trim().split('\n');
   if (lines.length < 2) {
     throw new Error('CSV file is empty or has no data rows');
   }
 
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  // Parse header - preserve original case
+  const rawHeaders = lines[0].split(',').map(h => h.trim());
+  const originalColumnNames = [...rawHeaders];
+  const headers = rawHeaders.map(h => h.toLowerCase());
 
   // Required columns
   const requiredCols = ['context_id', 'turn_id', 'speaker', 'utterance', 'start', 'end'];
@@ -54,6 +60,7 @@ function parseContextCSV(text: string, schema: AnnotationSchema): {
   const matchedColumns: string[] = [];
   const newColumns: string[] = [];
   const schemaColIndices: { colId: string; idx: number }[] = [];
+  const schemaColumnNamesLower = new Set(schema.map(col => col.name.toLowerCase()));
 
   for (const col of schema) {
     const headerIdx = headers.findIndex(h =>
@@ -67,6 +74,9 @@ function parseContextCSV(text: string, schema: AnnotationSchema): {
       newColumns.push(col.name);
     }
   }
+
+  // Columns that are typed fields (not stored in originalColumns)
+  const typedColumnsLower = new Set(['context_id', 'is_target', 'turn_id', 'speaker', 'utterance', 'start', 'end']);
 
   const data: ContextRow[] = [];
 
@@ -96,6 +106,17 @@ function parseContextCSV(text: string, schema: AnnotationSchema): {
       annotations[col.id] = matched ? (values[matched.idx] || '') : '';
     }
 
+    // Store all other original columns
+    const originalColumns: Record<string, string> = {};
+    for (let j = 0; j < originalColumnNames.length; j++) {
+      const colName = originalColumnNames[j];
+      const lowerColName = colName.toLowerCase();
+      // Skip typed columns and schema columns
+      if (!typedColumnsLower.has(lowerColName) && !schemaColumnNamesLower.has(lowerColName)) {
+        originalColumns[colName] = values[j] || '';
+      }
+    }
+
     const isTargetVal = isTargetIdx !== -1 ? values[isTargetIdx] : 'false';
 
     data.push({
@@ -107,10 +128,11 @@ function parseContextCSV(text: string, schema: AnnotationSchema): {
       start: parseFloat(values[startIdx] || '0'),
       end: parseFloat(values[endIdx] || '0'),
       annotations,
+      originalColumns,
     });
   }
 
-  return { data, matchedColumns, newColumns };
+  return { data, matchedColumns, newColumns, originalColumnNames };
 }
 
 export default function ContextPage() {
@@ -135,6 +157,7 @@ export default function ContextPage() {
   const [isSchemaSetupOpen, setIsSchemaSetupOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadInfo, setLoadInfo] = useState<{ matched: string[]; new: string[] } | null>(null);
+  const [originalColumnNames, setOriginalColumnNames] = useState<string[]>([]);
 
   // Get unique context IDs
   const contextIds = useMemo(() => {
@@ -232,6 +255,7 @@ export default function ContextPage() {
         const result = parseContextCSV(text, schema);
         setRawData(result.data);
         setTranscriptFileName(file.name);
+        setOriginalColumnNames(result.originalColumnNames);
 
         // Auto-select first context
         const ids = [...new Set(result.data.map(r => r.context_id))];
@@ -291,7 +315,7 @@ export default function ContextPage() {
   const handleExport = useCallback(() => {
     if (rawData.length === 0) return;
 
-    // Convert to TranscriptRow format for export
+    // Convert to TranscriptRow format for export - preserve all original columns
     const exportData = rawData.map(row => ({
       turn_id: row.turn_id,
       speaker: row.speaker,
@@ -299,11 +323,14 @@ export default function ContextPage() {
       end: row.end,
       utterance: row.utterance,
       annotations: row.annotations,
-      context_id: row.context_id,
-      is_target: row.is_target,
+      originalColumns: {
+        ...row.originalColumns,
+        context_id: row.context_id,
+        is_target: String(row.is_target),
+      },
     }));
 
-    const csv = exportToCSV(exportData as never[], schema);
+    const csv = exportToCSV(exportData as never[], schema, originalColumnNames);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
@@ -315,7 +342,7 @@ export default function ContextPage() {
     link.click();
 
     URL.revokeObjectURL(url);
-  }, [rawData, schema, transcriptFileName]);
+  }, [rawData, schema, transcriptFileName, originalColumnNames]);
 
   return (
     <DropZone onAudioDrop={handleMediaFile} onTranscriptDrop={handleTranscriptFile}>

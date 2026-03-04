@@ -18,6 +18,7 @@ interface BatchRow {
   start: number;
   end: number;
   annotations: Record<string, string>;
+  originalColumns: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -25,13 +26,17 @@ function parseBatchCSV(text: string, schema: AnnotationSchema): {
   data: BatchRow[];
   matchedColumns: string[];
   newColumns: string[];
+  originalColumnNames: string[];
 } {
   const lines = text.trim().split('\n');
   if (lines.length < 2) {
     throw new Error('CSV file is empty or has no data rows');
   }
 
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  // Parse header - preserve original case
+  const rawHeaders = lines[0].split(',').map(h => h.trim());
+  const originalColumnNames = [...rawHeaders];
+  const headers = rawHeaders.map(h => h.toLowerCase());
 
   // Required columns
   const requiredCols = ['batch_id', 'turn_id', 'speaker', 'utterance', 'start', 'end'];
@@ -52,6 +57,7 @@ function parseBatchCSV(text: string, schema: AnnotationSchema): {
   const matchedColumns: string[] = [];
   const newColumns: string[] = [];
   const schemaColIndices: { colId: string; idx: number }[] = [];
+  const schemaColumnNamesLower = new Set(schema.map(col => col.name.toLowerCase()));
 
   for (const col of schema) {
     const headerIdx = headers.findIndex(h =>
@@ -65,6 +71,9 @@ function parseBatchCSV(text: string, schema: AnnotationSchema): {
       newColumns.push(col.name);
     }
   }
+
+  // Columns that are typed fields (not stored in originalColumns)
+  const typedColumnsLower = new Set(['batch_id', 'turn_id', 'speaker', 'utterance', 'start', 'end']);
 
   const data: BatchRow[] = [];
 
@@ -94,6 +103,17 @@ function parseBatchCSV(text: string, schema: AnnotationSchema): {
       annotations[col.id] = matched ? (values[matched.idx] || '') : '';
     }
 
+    // Store all other original columns
+    const originalColumns: Record<string, string> = {};
+    for (let j = 0; j < originalColumnNames.length; j++) {
+      const colName = originalColumnNames[j];
+      const lowerColName = colName.toLowerCase();
+      // Skip typed columns and schema columns
+      if (!typedColumnsLower.has(lowerColName) && !schemaColumnNamesLower.has(lowerColName)) {
+        originalColumns[colName] = values[j] || '';
+      }
+    }
+
     data.push({
       batch_id: values[batchIdIdx] || '',
       turn_id: parseInt(values[turnIdIdx] || '0', 10),
@@ -102,10 +122,11 @@ function parseBatchCSV(text: string, schema: AnnotationSchema): {
       start: parseFloat(values[startIdx] || '0'),
       end: parseFloat(values[endIdx] || '0'),
       annotations,
+      originalColumns,
     });
   }
 
-  return { data, matchedColumns, newColumns };
+  return { data, matchedColumns, newColumns, originalColumnNames };
 }
 
 export default function BatchPage() {
@@ -130,6 +151,7 @@ export default function BatchPage() {
   const [isSchemaSetupOpen, setIsSchemaSetupOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadInfo, setLoadInfo] = useState<{ matched: string[]; new: string[] } | null>(null);
+  const [originalColumnNames, setOriginalColumnNames] = useState<string[]>([]);
 
   // Get unique batch IDs
   const batchIds = useMemo(() => {
@@ -222,6 +244,7 @@ export default function BatchPage() {
         const result = parseBatchCSV(text, schema);
         setRawData(result.data);
         setTranscriptFileName(file.name);
+        setOriginalColumnNames(result.originalColumnNames);
 
         // Auto-select first batch
         const ids = [...new Set(result.data.map(r => r.batch_id))];
@@ -286,10 +309,13 @@ export default function BatchPage() {
       end: row.end,
       utterance: row.utterance,
       annotations: row.annotations,
-      batch_id: row.batch_id,
+      originalColumns: {
+        ...row.originalColumns,
+        batch_id: row.batch_id,
+      },
     }));
 
-    const csv = exportToCSV(exportData as never[], schema);
+    const csv = exportToCSV(exportData as never[], schema, originalColumnNames);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
@@ -301,7 +327,7 @@ export default function BatchPage() {
     link.click();
 
     URL.revokeObjectURL(url);
-  }, [rawData, schema, transcriptFileName]);
+  }, [rawData, schema, transcriptFileName, originalColumnNames]);
 
   return (
     <DropZone onAudioDrop={handleMediaFile} onTranscriptDrop={handleTranscriptFile}>

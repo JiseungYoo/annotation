@@ -38,6 +38,7 @@ export default function SessionPage() {
   const [isSchemaSetupOpen, setIsSchemaSetupOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadInfo, setLoadInfo] = useState<{ matched: string[]; new: string[] } | null>(null);
+  const [originalColumnNames, setOriginalColumnNames] = useState<string[]>([]);
 
   // Handle media file selection (audio or video)
   const handleMediaFile = useCallback((file: File) => {
@@ -70,6 +71,7 @@ export default function SessionPage() {
         const result = parseCSV(text, schema);
         setTranscriptData(result.data);
         setTranscriptFileName(file.name);
+        setOriginalColumnNames(result.originalColumnNames);
         setCurrentIndex(-1); // Start with no selection
 
         if (result.matchedColumns.length > 0 || result.newColumns.length > 0) {
@@ -165,7 +167,7 @@ export default function SessionPage() {
   const handleExport = useCallback(() => {
     if (transcriptData.length === 0) return;
 
-    const csv = exportToCSV(transcriptData, schema);
+    const csv = exportToCSV(transcriptData, schema, originalColumnNames);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
@@ -177,7 +179,7 @@ export default function SessionPage() {
     link.click();
 
     URL.revokeObjectURL(url);
-  }, [transcriptData, schema, transcriptFileName]);
+  }, [transcriptData, schema, transcriptFileName, originalColumnNames]);
 
   const maxTurnId = transcriptData.length > 0
     ? Math.max(...transcriptData.map(r => r.turn_id))

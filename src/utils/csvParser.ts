@@ -4,6 +4,7 @@ export interface ParseResult {
   data: TranscriptRow[];
   matchedColumns: string[];  // Schema columns that were found in CSV
   newColumns: string[];      // Schema columns that were not found (created as empty)
+  originalColumnNames: string[];  // All column names from original CSV (for export)
 }
 
 /**
@@ -41,18 +42,17 @@ function parseTimestamp(value: string): number {
 export function parseCSV(csvText: string, schema: AnnotationSchema): ParseResult {
   const lines = csvText.trim().split('\n');
   if (lines.length < 2) {
-    return { data: [], matchedColumns: [], newColumns: [] };
+    return { data: [], matchedColumns: [], newColumns: [], originalColumnNames: [] };
   }
 
-  // Parse header
+  // Parse header - preserve original column names and order
   const header = parseCSVLine(lines[0]);
+  const originalColumnNames = header.map(col => col.trim());
   const headerMap: Record<string, number> = {};
-  const headerNamesLower: Record<string, string> = {}; // lowercase -> original case
 
   header.forEach((col, index) => {
     const lowerCol = col.toLowerCase().trim();
     headerMap[lowerCol] = index;
-    headerNamesLower[lowerCol] = col.trim();
   });
 
   // Required columns check
@@ -66,6 +66,7 @@ export function parseCSV(csvText: string, schema: AnnotationSchema): ParseResult
   const matchedColumns: string[] = [];
   const newColumns: string[] = [];
   const schemaColumnMap: Record<string, number | null> = {}; // schema col id -> csv column index
+  const schemaColumnNames = new Set(schema.map(col => col.name.toLowerCase()));
 
   for (const col of schema) {
     const lowerName = col.name.toLowerCase();
@@ -86,7 +87,7 @@ export function parseCSV(csvText: string, schema: AnnotationSchema): ParseResult
 
     const values = parseCSVLine(line);
 
-    // Build annotations object
+    // Build annotations object from schema columns
     const annotations: Record<string, string> = {};
     for (const col of schema) {
       const csvIndex = schemaColumnMap[col.id];
@@ -97,20 +98,26 @@ export function parseCSV(csvText: string, schema: AnnotationSchema): ParseResult
       }
     }
 
+    // Build originalColumns object - all columns except required and schema columns
+    const originalColumns: Record<string, string> = {};
+    for (let j = 0; j < originalColumnNames.length; j++) {
+      const colName = originalColumnNames[j];
+      const lowerColName = colName.toLowerCase();
+      // Skip required columns (they're stored as typed fields)
+      // Skip schema columns (they're stored in annotations)
+      if (!REQUIRED_COLUMNS.includes(lowerColName as typeof REQUIRED_COLUMNS[number]) &&
+          !schemaColumnNames.has(lowerColName)) {
+        originalColumns[colName] = values[j] || '';
+      }
+    }
+
     const row: TranscriptRow = {
       turn_id: parseInt(values[headerMap['turn_id']] || '0', 10),
       speaker: values[headerMap['speaker']] || '',
       start: parseTimestamp(values[headerMap['start']] || '0'),
       end: parseTimestamp(values[headerMap['end']] || '0'),
       utterance: values[headerMap['utterance']] || '',
-      clean_utterance: headerMap['clean_utterance'] !== undefined ? values[headerMap['clean_utterance']] : undefined,
-      start_ts: headerMap['start_ts'] !== undefined ? values[headerMap['start_ts']] : undefined,
-      end_ts: headerMap['end_ts'] !== undefined ? values[headerMap['end_ts']] : undefined,
-      words: headerMap['words'] !== undefined ? parseInt(values[headerMap['words']] || '0', 10) : undefined,
-      n_utterances: headerMap['n_utterances'] !== undefined ? parseInt(values[headerMap['n_utterances']] || '0', 10) : undefined,
-      length_seconds: headerMap['length_seconds'] !== undefined ? parseFloat(values[headerMap['length_seconds']] || '0') : undefined,
-      backchannel: headerMap['backchannel'] !== undefined ? values[headerMap['backchannel']] : undefined,
-      prev_turn_gap: headerMap['prev_turn_gap'] !== undefined ? parseFloat(values[headerMap['prev_turn_gap']] || '0') : undefined,
+      originalColumns,
       annotations,
     };
 
@@ -121,6 +128,7 @@ export function parseCSV(csvText: string, schema: AnnotationSchema): ParseResult
     data: data.sort((a, b) => a.turn_id - b.turn_id),
     matchedColumns,
     newColumns,
+    originalColumnNames,
   };
 }
 
@@ -158,40 +166,58 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
-export function exportToCSV(data: TranscriptRow[], schema: AnnotationSchema): string {
+export function exportToCSV(
+  data: TranscriptRow[],
+  schema: AnnotationSchema,
+  originalColumnNames?: string[]
+): string {
   if (data.length === 0) return '';
 
-  // Build header
-  const baseHeaders = [
-    'turn_id', 'speaker', 'start', 'end', 'utterance', 'clean_utterance',
-    'start_ts', 'end_ts', 'words', 'n_utterances', 'length_seconds',
-    'backchannel', 'prev_turn_gap'
-  ];
+  // Required columns always come first
+  const requiredHeaders = ['turn_id', 'speaker', 'start', 'end', 'utterance'];
 
+  // Get all original column names (excluding required and schema columns)
+  const schemaColumnNamesLower = new Set(schema.map(col => col.name.toLowerCase()));
+  const requiredLower = new Set(requiredHeaders.map(h => h.toLowerCase()));
+
+  // Determine extra columns to include (from originalColumns in data)
+  // Use originalColumnNames order if provided, otherwise collect from data
+  let extraColumnNames: string[] = [];
+  if (originalColumnNames && originalColumnNames.length > 0) {
+    extraColumnNames = originalColumnNames.filter(col => {
+      const lower = col.toLowerCase();
+      return !requiredLower.has(lower) && !schemaColumnNamesLower.has(lower);
+    });
+  } else if (data.length > 0 && data[0].originalColumns) {
+    extraColumnNames = Object.keys(data[0].originalColumns);
+  }
+
+  // Annotation headers from schema
   const annotationHeaders = schema.map(col => col.name);
-  const headers = [...baseHeaders, ...annotationHeaders];
+
+  // Final header order: required + extra original columns + annotation columns
+  const headers = [...requiredHeaders, ...extraColumnNames, ...annotationHeaders];
 
   // Build rows
   const rows = data.map(row => {
-    const baseValues = [
+    // Required values
+    const requiredValues = [
       row.turn_id.toString(),
       escapeCSV(row.speaker),
       row.start.toString(),
       row.end.toString(),
       escapeCSV(row.utterance),
-      escapeCSV(row.clean_utterance || ''),
-      escapeCSV(row.start_ts || ''),
-      escapeCSV(row.end_ts || ''),
-      row.words?.toString() || '',
-      row.n_utterances?.toString() || '',
-      row.length_seconds?.toString() || '',
-      escapeCSV(row.backchannel || ''),
-      row.prev_turn_gap?.toString() || '',
     ];
 
+    // Extra original column values
+    const extraValues = extraColumnNames.map(colName =>
+      escapeCSV(row.originalColumns?.[colName] || '')
+    );
+
+    // Annotation values
     const annotationValues = schema.map(col => escapeCSV(row.annotations[col.id] || ''));
 
-    return [...baseValues, ...annotationValues].join(',');
+    return [...requiredValues, ...extraValues, ...annotationValues].join(',');
   });
 
   return [headers.join(','), ...rows].join('\n');

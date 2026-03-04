@@ -36,6 +36,11 @@ export function TranscriptPanel({ data, currentIndex }: TranscriptPanelProps) {
 
   const row = data[currentIndex];
 
+  // Get optional values from originalColumns
+  const cleanUtterance = row.originalColumns?.['clean_utterance'] || row.originalColumns?.['Clean Utterance'];
+  const words = row.originalColumns?.['words'] || row.originalColumns?.['Words'];
+  const lengthSeconds = row.originalColumns?.['length_seconds'] || row.originalColumns?.['Length Seconds'];
+
   return (
     <div className="h-full overflow-y-auto p-6">
       <div className="bg-gray-800 rounded-lg p-6 space-y-4">
@@ -61,27 +66,27 @@ export function TranscriptPanel({ data, currentIndex }: TranscriptPanelProps) {
         </div>
 
         {/* Clean utterance if available */}
-        {row.clean_utterance && (
+        {cleanUtterance && (
           <div className="space-y-2 pt-4 border-t border-gray-700">
             <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Clean Utterance</h3>
             <p className="text-base text-gray-300 leading-relaxed">
-              {row.clean_utterance}
+              {cleanUtterance}
             </p>
           </div>
         )}
 
         {/* Additional metadata */}
         <div className="pt-4 border-t border-gray-700 grid grid-cols-2 gap-4 text-sm">
-          {row.words !== undefined && (
+          {words && (
             <div>
               <span className="text-gray-500">Words:</span>
-              <span className="ml-2 text-gray-300">{row.words}</span>
+              <span className="ml-2 text-gray-300">{words}</span>
             </div>
           )}
-          {row.length_seconds !== undefined && (
+          {lengthSeconds && (
             <div>
               <span className="text-gray-500">Duration:</span>
-              <span className="ml-2 text-gray-300">{row.length_seconds.toFixed(2)}s</span>
+              <span className="ml-2 text-gray-300">{parseFloat(lengthSeconds).toFixed(2)}s</span>
             </div>
           )}
         </div>

@@ -17,6 +17,7 @@ interface PairRow {
   end: number;
   choice?: string; // 'A', 'B', or 'Tie'
   note?: string;
+  originalColumns: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -30,13 +31,17 @@ function parsePairCSV(text: string): {
   data: PairRow[];
   hasChoice: boolean;
   hasNote: boolean;
+  originalColumnNames: string[];
 } {
   const lines = text.trim().split('\n');
   if (lines.length < 2) {
     throw new Error('CSV file is empty or has no data rows');
   }
 
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  // Parse header - preserve original case
+  const rawHeaders = lines[0].split(',').map(h => h.trim());
+  const originalColumnNames = [...rawHeaders];
+  const headers = rawHeaders.map(h => h.toLowerCase());
 
   // Required columns
   const requiredCols = ['pair_id', 'turn_id', 'speaker', 'utterance', 'start', 'end'];
@@ -55,6 +60,9 @@ function parsePairCSV(text: string): {
   const endIdx = headers.indexOf('end');
   const choiceIdx = headers.indexOf('choice');
   const noteIdx = headers.indexOf('note');
+
+  // Columns that are typed fields (not stored in originalColumns)
+  const typedColumnsLower = new Set(['pair_id', 'turn_position', 'turn_id', 'speaker', 'utterance', 'start', 'end', 'choice', 'note']);
 
   const data: PairRow[] = [];
 
@@ -78,6 +86,17 @@ function parsePairCSV(text: string): {
     }
     values.push(current.trim());
 
+    // Store all other original columns
+    const originalColumns: Record<string, string> = {};
+    for (let j = 0; j < originalColumnNames.length; j++) {
+      const colName = originalColumnNames[j];
+      const lowerColName = colName.toLowerCase();
+      // Skip typed columns
+      if (!typedColumnsLower.has(lowerColName)) {
+        originalColumns[colName] = values[j] || '';
+      }
+    }
+
     data.push({
       pair_id: values[pairIdIdx] || '',
       turn_position: turnPositionIdx !== -1 ? values[turnPositionIdx] || 'A' : 'A',
@@ -88,6 +107,7 @@ function parsePairCSV(text: string): {
       end: parseFloat(values[endIdx] || '0'),
       choice: choiceIdx !== -1 ? values[choiceIdx] || '' : '',
       note: noteIdx !== -1 ? values[noteIdx] || '' : '',
+      originalColumns,
     });
   }
 
@@ -95,6 +115,7 @@ function parsePairCSV(text: string): {
     data,
     hasChoice: choiceIdx !== -1,
     hasNote: noteIdx !== -1,
+    originalColumnNames,
   };
 }
 
@@ -119,6 +140,7 @@ export default function PairPage() {
   const [pairAnnotations, setPairAnnotations] = useState<Record<string, PairAnnotation>>({});
   const [error, setError] = useState<string | null>(null);
   const [loadInfo, setLoadInfo] = useState<{ hasChoice: boolean; hasNote: boolean } | null>(null);
+  const [originalColumnNames, setOriginalColumnNames] = useState<string[]>([]);
 
   // Get unique pair IDs
   const pairIds = useMemo(() => {
@@ -226,6 +248,7 @@ export default function PairPage() {
         const result = parsePairCSV(text);
         setRawData(result.data);
         setTranscriptFileName(file.name);
+        setOriginalColumnNames(result.originalColumnNames);
 
         // Initialize annotations from loaded data
         const annotations: Record<string, PairAnnotation> = {};
@@ -298,25 +321,44 @@ export default function PairPage() {
   const handleExport = useCallback(() => {
     if (rawData.length === 0) return;
 
-    // Build CSV with choice and note columns
-    const headers = ['pair_id', 'turn_position', 'turn_id', 'speaker', 'start', 'end', 'utterance', 'choice', 'note'];
+    // Get typed column names and annotation columns
+    const typedColumns = ['pair_id', 'turn_position', 'turn_id', 'speaker', 'start', 'end', 'utterance'];
+    const annotationColumns = ['choice', 'note'];
+    const typedColumnsLower = new Set([...typedColumns.map(c => c.toLowerCase()), ...annotationColumns.map(c => c.toLowerCase())]);
+
+    // Get extra original columns (preserve order from original file)
+    const extraColumns = originalColumnNames.filter(col => !typedColumnsLower.has(col.toLowerCase()));
+
+    // Build header: typed columns + extra original columns + annotation columns
+    const headers = [...typedColumns, ...extraColumns, ...annotationColumns];
+
+    const escapeCSV = (value: string) => {
+      if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    };
+
     const rows = rawData.map(row => {
       const annotation = pairAnnotations[row.pair_id] || { choice: '', note: '' };
       // Only include choice/note on turn A row
       const choice = row.turn_position === 'A' ? annotation.choice : '';
       const note = row.turn_position === 'A' ? annotation.note : '';
 
-      return [
+      const typedValues = [
         row.pair_id,
         row.turn_position,
-        row.turn_id,
-        row.speaker,
-        row.start,
-        row.end,
-        `"${(row.utterance || '').replace(/"/g, '""')}"`,
-        choice,
-        `"${(note || '').replace(/"/g, '""')}"`,
-      ].join(',');
+        String(row.turn_id),
+        escapeCSV(row.speaker),
+        String(row.start),
+        String(row.end),
+        escapeCSV(row.utterance || ''),
+      ];
+
+      const extraValues = extraColumns.map(col => escapeCSV(row.originalColumns?.[col] || ''));
+      const annotationValues = [choice, escapeCSV(note)];
+
+      return [...typedValues, ...extraValues, ...annotationValues].join(',');
     });
 
     const csv = [headers.join(','), ...rows].join('\n');
@@ -331,7 +373,7 @@ export default function PairPage() {
     link.click();
 
     URL.revokeObjectURL(url);
-  }, [rawData, pairAnnotations, transcriptFileName]);
+  }, [rawData, pairAnnotations, transcriptFileName, originalColumnNames]);
 
   return (
     <DropZone onAudioDrop={handleMediaFile} onTranscriptDrop={handleTranscriptFile}>
