@@ -23,8 +23,16 @@ export function useMediaPlayer() {
   });
 
   const getActiveMedia = useCallback((): HTMLMediaElement | null => {
-    return mediaState.mediaType === 'video' ? videoRef.current : audioRef.current;
-  }, [mediaState.mediaType]);
+    // Check which media element is currently active by looking at the refs directly
+    // This avoids stale closure issues with mediaState.mediaType
+    if (videoRef.current && videoRef.current.src) {
+      return videoRef.current;
+    }
+    if (audioRef.current && audioRef.current.src) {
+      return audioRef.current;
+    }
+    return null;
+  }, []);
 
   const setupMediaEvents = useCallback((media: HTMLMediaElement, type: MediaType) => {
     media.addEventListener('loadedmetadata', () => {

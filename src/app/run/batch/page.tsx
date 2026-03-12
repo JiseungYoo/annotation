@@ -152,6 +152,7 @@ export default function BatchPage() {
   const [error, setError] = useState<string | null>(null);
   const [loadInfo, setLoadInfo] = useState<{ matched: string[]; new: string[] } | null>(null);
   const [originalColumnNames, setOriginalColumnNames] = useState<string[]>([]);
+  const [selectedUtterance, setSelectedUtterance] = useState<{ turnId: number; speaker: string; text: string } | null>(null);
 
   // Get unique batch IDs
   const batchIds = useMemo(() => {
@@ -272,6 +273,7 @@ export default function BatchPage() {
 
   // Handle playing a segment
   const handlePlaySegment = useCallback((row: BatchRow) => {
+    setSelectedUtterance({ turnId: row.turn_id, speaker: row.speaker, text: row.utterance });
     if (mediaState.isLoaded) {
       playSegment(row.start, row.end);
     }
@@ -438,6 +440,32 @@ export default function BatchPage() {
               </div>
             )}
 
+            {/* Utterance Display Box */}
+            {currentBatchId && (
+              <div className="border-b border-gray-700 px-4 py-3 bg-gray-800/30 flex-shrink-0">
+                {selectedUtterance ? (
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0">
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                        selectedUtterance.speaker.toLowerCase().includes('teacher')
+                          ? 'bg-blue-600/50 text-blue-200'
+                          : 'bg-green-600/50 text-green-200'
+                      }`}>
+                        Turn {selectedUtterance.turnId} · {selectedUtterance.speaker}
+                      </span>
+                    </div>
+                    <p className="text-gray-200 text-sm leading-relaxed flex-1">
+                      {selectedUtterance.text}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm text-center">
+                    Click on a row to display the utterance here
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Batch Table with Annotations */}
             <div className="flex-1 overflow-auto">
               {currentBatchRows.length === 0 ? (
@@ -522,6 +550,36 @@ export default function BatchPage() {
                 </div>
               )}
             </div>
+
+            {/* Rating Guide */}
+            {currentBatchId && (
+              <div className="border-t border-gray-700 px-4 py-3 bg-gray-800/50">
+                <div className="flex items-center justify-center gap-6 text-sm">
+                  <span className="text-gray-400 font-medium">Rating Guide:</span>
+                  <div className="flex items-center gap-4">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-6 h-6 rounded-full bg-red-600/80 flex items-center justify-center text-white font-medium">1</span>
+                      <span className="text-gray-300">Not</span>
+                    </span>
+                    <span className="text-gray-600">|</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-6 h-6 rounded-full bg-orange-500/80 flex items-center justify-center text-white font-medium">2</span>
+                      <span className="text-gray-300">Slightly</span>
+                    </span>
+                    <span className="text-gray-600">|</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-6 h-6 rounded-full bg-blue-500/80 flex items-center justify-center text-white font-medium">4</span>
+                      <span className="text-gray-300">Moderately</span>
+                    </span>
+                    <span className="text-gray-600">|</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-6 h-6 rounded-full bg-green-500/80 flex items-center justify-center text-white font-medium">5</span>
+                      <span className="text-gray-300">Highly</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Navigation Buttons */}
             {currentBatchId && (
